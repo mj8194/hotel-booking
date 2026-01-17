@@ -207,16 +207,3 @@ export async function getHotelBookings(req, res) {
         return res.status(500).json({ success: false, message: error.message });
     }
 }
-export const stripePayment = async (req, res)=>{
-    try{
-        const { bookingId } = req.body;
-        const booking = await Booking.findById(bookingId);
-        const roomData = await Room.findById(booking.room).popuplate('hotel');
-        const totalPrice = booking.totalPrice;
-        const { origin } = req.headers;
-        
-    }
-    catch (error){
-
-    }
-}
