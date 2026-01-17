@@ -10,101 +10,79 @@ import userRouter from "./routes/userRoutes.js";
 import hotelRouter from "./routes/hotelRoutes.js";
 import roomRouter from "./routes/roomRoutes.js";
 import bookingRouter from "./routes/bookingRoutes.js";
-import messageRouter from "./routes/messageRoutes.js";
+import messageRouter from "./routes/messageRoutes.js"; // Add this
 
-// ===== ENV CHECK =====
-const REQUIRED_ENV = [
-  "CLERK_SECRET_KEY",
-  "CLERK_PUBLISHABLE_KEY",
-  "MONGODB_URI",
-  "CLERK_WEBHOOK_SECRET"
-];
-
+// 1. Strict Environment Check
+// Newer Clerk SDKs require both Secret and Publishable keys for full functionality
+const REQUIRED_ENV = ["CLERK_SECRET_KEY", "CLERK_PUBLISHABLE_KEY", "MONGODB_URI"];
 REQUIRED_ENV.forEach((key) => {
   if (!process.env[key]) {
-    console.error(`❌ CRITICAL ERROR: ${key} is missing`);
+    console.error(`❌ CRITICAL ERROR: ${key} is missing in .env`);
   }
 });
 
-// ===== INIT SERVICES (safe for serverless) =====
+// Connect Database and Cloudinary
 connectDB();
 connectCloudinary();
 
 const app = express();
 
-// ===== CORS CONFIG =====
-const allowedOrigins = [
-  "http://localhost:5173",
-  "https://sthivra.vercel.app",
-  "https://sthivra-frontend.vercel.app"
-];
+// --- Middleware Configuration ---
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Allow server-to-server, Postman, webhooks
-      if (!origin) return callback(null, true);
-      const allowedOrigins = [
-       "http://localhost:5173",
-  "https://sthivra.vercel.app",
-  "https://sthivra-frontend.vercel.app"
-      ];
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
+// Enable CORS with credentials for Clerk session cookies
+app.use(cors({ 
+  origin: process.env.CLIENT_URL || "http://localhost:5173", 
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization'] // Add this explicitly 
+}));
 
-      return callback(new Error("Not allowed by CORS"));
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"]
-  })
-);
+/** * IMPORTANT: The Clerk Webhook must come BEFORE express.json() 
+ * It needs the raw body to verify the Svix signature.
+ */
+app.post("/api/clerk", express.raw({ type: "application/json" }), clerkWebhooks);
 
-// Explicit preflight handling
-
-// ===== CLERK WEBHOOK (RAW BODY REQUIRED) =====
-app.post(
-  "/api/clerk",
-  express.raw({ type: "application/json" }),
-  clerkWebhooks
-);
-
-// ===== BODY PARSER =====
+// Standard JSON parsing for all other routes
 app.use(express.json());
 
-// ===== CLERK AUTH =====
+/**
+ * Clerk Middleware
+ * This populates req.auth with session data for every request.
+ */
 app.use(clerkMiddleware());
 
-// ===== ROUTES =====
-app.use("/api/messages", messageRouter);
+// --- Routes ---
+app.use("/api/messages", messageRouter); // Add this line
 app.use("/api/user", userRouter);
 app.use("/api/hotels", hotelRouter);
 app.use("/api/rooms", roomRouter);
 app.use("/api/bookings", bookingRouter);
+// Health check and root route
+app.get("/", (req, res) => res.send("Sthivra API is running correctly"));
 
-// ===== HEALTH CHECK =====
-app.get("/", (req, res) => {
-  res.send("Sthivra API is running correctly");
-});
+// --- Error Handling ---
 
-// ===== 404 HANDLER =====
+// 404 Handler for undefined routes
 app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: "API Route not found"
-  });
+  res.status(404).json({ success: false, message: "API Route not found" });
 });
 
-// ===== GLOBAL ERROR HANDLER =====
+// Global internal error handler
 app.use((err, req, res, next) => {
+  const statusCode = err.status || 500;
   console.error(`[Error] ${req.method} ${req.url}:`, err.message);
-
-  res.status(err.status || 500).json({
-    success: false,
-    message: err.message || "Internal Server Error"
+  
+  res.status(statusCode).json({ 
+    success: false, 
+    message: err.message || "Internal Server Error" 
   });
 });
 
-// ✅ IMPORTANT FOR VERCEL
-export default app;
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📡 Client URL: ${process.env.CLIENT_URL || "http://localhost:5173"}`);
+  
+  if (process.env.CLERK_SECRET_KEY) {
+    console.log("✅ Clerk authentication middleware is active");
+  }
+});
