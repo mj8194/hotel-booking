@@ -11,7 +11,7 @@ import Layout from "./pages/hotelOwner/Layout";
 import Dashboard from "./pages/hotelOwner/Dashboard";
 import AddRoom from "./pages/hotelOwner/AddRoom";
 import ListRoom from "./pages/hotelOwner/ListRoom";
-import { Toaster } from 'react-hot-toast'; // Using Hot-Toast instead of Toastify
+import { Toaster } from 'react-hot-toast';
 import { useAppContext } from "./context/AppContext";
 import ExclusiveOffers from "./components/ExclusiveOffers";
 import Contact from "./pages/Contact";
@@ -26,7 +26,7 @@ const App = () => {
       {/* Toast notifications handler */}
       <Toaster position="bottom-right" reverseOrder={false} />
       
-      {/* Conditionally render Navbar */}
+      {/* Conditionally render Navbar: Hidden on owner dashboard */}
       {!isOwnerPath && <Navbar />}
       
       {/* Conditional Hotel Registration Modal */}
@@ -39,8 +39,8 @@ const App = () => {
           <Route path="/rooms" element={<AllRooms />} />
           <Route path="/rooms/:id" element={<RoomDetails />} />
           <Route path="/my-bookings" element={<MyBookings />} />
-          <Route path="/offers" element={<ExclusiveOffers />} /> {/* Ensure this matches navigate('/offers') */}
-          <Route path="/contact" element={<Contact />} /> {/* Ensure this matches navigate('/offers') */}
+          <Route path="/offers" element={<ExclusiveOffers />} />
+          <Route path="/contact" element={<Contact />} />
 
           {/* Hotel Owner Dashboard Routes */}
           <Route path="/owner" element={<Layout />}>
@@ -51,7 +51,7 @@ const App = () => {
         </Routes>
       </div>
       
-      {/* Footer stays at bottom */}
+      {/* Footer displays on all pages */}
       <Footer />
     </div>
   );
