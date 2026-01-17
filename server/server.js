@@ -35,7 +35,8 @@ const app = express();
 // ===== CORS CONFIG =====
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://sthivra.vercel.app"
+  "https://sthivra.vercel.app",
+  "https://sthivra-frontend.vercel.app"
 ];
 
 app.use(
