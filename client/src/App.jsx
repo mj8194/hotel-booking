@@ -1,7 +1,7 @@
 import React from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import Navbar from "./components/Navbar";
-import Home from "./pages/Home"; // adjust path if needed
+import Home from "./pages/Home";
 import Footer from "./components/Footer";
 import AllRooms from "./pages/AllRooms";
 import RoomDetails from "./pages/RoomDetails";
@@ -11,30 +11,47 @@ import Layout from "./pages/hotelOwner/Layout";
 import Dashboard from "./pages/hotelOwner/Dashboard";
 import AddRoom from "./pages/hotelOwner/AddRoom";
 import ListRoom from "./pages/hotelOwner/ListRoom";
+import { Toaster } from 'react-hot-toast'; // Using Hot-Toast instead of Toastify
+import { useAppContext } from "./context/AppContext";
+import ExclusiveOffers from "./components/ExclusiveOffers";
+import Contact from "./pages/Contact";
 
 const App = () => {
-  const isOwnerPath = useLocation().pathname.includes("owner");
+  const location = useLocation();
+  const isOwnerPath = location.pathname.includes("owner");
+  const { showHotelReg } = useAppContext();
 
   return (
-    <div>
+    <div className="bg-white">
+      {/* Toast notifications handler */}
+      <Toaster position="bottom-right" reverseOrder={false} />
+      
+      {/* Conditionally render Navbar */}
       {!isOwnerPath && <Navbar />}
-      {false && <HotelReg />}
+      
+      {/* Conditional Hotel Registration Modal */}
+      {showHotelReg && <HotelReg />}
+      
       <div className="min-h-[70vh]">
         <Routes>
+          {/* Public & Guest Routes */}
           <Route path="/" element={<Home />} />
           <Route path="/rooms" element={<AllRooms />} />
           <Route path="/rooms/:id" element={<RoomDetails />} />
           <Route path="/my-bookings" element={<MyBookings />} />
-          <Route path="/owner" element={<Layout/>}>
-          <Route index element={<Dashboard/>} />
-          <Route path="add-room" element={<AddRoom/>} />
-          <Route path="list-room" element={<ListRoom/>} />
+          <Route path="/offers" element={<ExclusiveOffers />} /> {/* Ensure this matches navigate('/offers') */}
+          <Route path="/contact" element={<Contact />} /> {/* Ensure this matches navigate('/offers') */}
 
-
+          {/* Hotel Owner Dashboard Routes */}
+          <Route path="/owner" element={<Layout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="add-room" element={<AddRoom />} />
+            <Route path="list-room" element={<ListRoom />} />
           </Route>
-
         </Routes>
       </div>
+      
+      {/* Footer stays at bottom */}
       <Footer />
     </div>
   );
