@@ -43,7 +43,10 @@ app.use(
     origin: (origin, callback) => {
       // Allow server-to-server, Postman, webhooks
       if (!origin) return callback(null, true);
-
+      const allowedOrigins = [
+        "http://localhost:5173",
+        "https://sthivra.vercel.app"
+      ];
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
@@ -57,7 +60,6 @@ app.use(
 );
 
 // Explicit preflight handling
-app.options("*", cors());
 
 // ===== CLERK WEBHOOK (RAW BODY REQUIRED) =====
 app.post(
