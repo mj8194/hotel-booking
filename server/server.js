@@ -12,61 +12,97 @@ import roomRouter from "./routes/roomRoutes.js";
 import bookingRouter from "./routes/bookingRoutes.js";
 import messageRouter from "./routes/messageRoutes.js";
 
-// Strict Environment Check for Vercel stability
-const REQUIRED_ENV = ["CLERK_SECRET_KEY", "CLERK_PUBLISHABLE_KEY", "MONGODB_URI", "CLERK_WEBHOOK_SECRET"];
+// ===== ENV CHECK (Good, keep this) =====
+const REQUIRED_ENV = [
+  "CLERK_SECRET_KEY",
+  "CLERK_PUBLISHABLE_KEY",
+  "MONGODB_URI",
+  "CLERK_WEBHOOK_SECRET"
+];
+
 REQUIRED_ENV.forEach((key) => {
   if (!process.env[key]) {
-    console.error(`❌ CRITICAL ERROR: ${key} is missing in .env`);
+    console.error(`❌ CRITICAL ERROR: ${key} is missing`);
   }
 });
 
+// ===== INIT SERVICES =====
 connectDB();
 connectCloudinary();
 
 const app = express();
 
-// Enable CORS
-app.use(cors({ 
-  origin: process.env.CLIENT_URL || "http://localhost:5173", 
-  credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization'] 
-}));
+// ===== CORS CONFIG (THIS FIXES YOUR ERROR) =====
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://sthivra.vercel.app"
+];
 
-/** * VERCEL WEBHOOK HANDLING:
- * The Clerk Webhook must use express.raw to verify the Svix signature.
- * It MUST be placed before app.use(express.json()).
- */
-app.post("/api/clerk", express.raw({ type: "application/json" }), clerkWebhooks);
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // allow server-to-server / postman / webhook requests
+      if (!origin) return callback(null, true);
 
-// Standard JSON parsing for all other routes
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+  })
+);
+
+// Explicit preflight support
+app.options("*", cors());
+
+// ===== CLERK WEBHOOK (MUST BE BEFORE JSON) =====
+app.post(
+  "/api/clerk",
+  express.raw({ type: "application/json" }),
+  clerkWebhooks
+);
+
+// ===== BODY PARSER =====
 app.use(express.json());
 
-// Clerk Middleware
+// ===== CLERK AUTH MIDDLEWARE =====
 app.use(clerkMiddleware());
 
-// Routes
+// ===== ROUTES =====
 app.use("/api/messages", messageRouter);
 app.use("/api/user", userRouter);
 app.use("/api/hotels", hotelRouter);
 app.use("/api/rooms", roomRouter);
 app.use("/api/bookings", bookingRouter);
 
-app.get("/", (req, res) => res.send("Sthivra API is running correctly"));
-
-// Error Handling
-app.use((req, res) => {
-  res.status(404).json({ success: false, message: "API Route not found" });
+// ===== HEALTH CHECK =====
+app.get("/", (req, res) => {
+  res.send("Sthivra API is running correctly");
 });
 
-app.use((err, req, res, next) => {
-  const statusCode = err.status || 500;
-  console.error(`[Error] ${req.method} ${req.url}:`, err.message);
-  res.status(statusCode).json({ 
-    success: false, 
-    message: err.message || "Internal Server Error" 
+// ===== 404 HANDLER =====
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "API Route not found"
   });
 });
 
+// ===== GLOBAL ERROR HANDLER =====
+app.use((err, req, res, next) => {
+  console.error(`[Error] ${req.method} ${req.url}:`, err.message);
+
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || "Internal Server Error"
+  });
+});
+
+// ===== START SERVER =====
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
