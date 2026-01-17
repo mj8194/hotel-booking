@@ -12,7 +12,7 @@ import roomRouter from "./routes/roomRoutes.js";
 import bookingRouter from "./routes/bookingRoutes.js";
 import messageRouter from "./routes/messageRoutes.js";
 
-// ===== ENV CHECK (Good, keep this) =====
+// ===== ENV CHECK =====
 const REQUIRED_ENV = [
   "CLERK_SECRET_KEY",
   "CLERK_PUBLISHABLE_KEY",
@@ -26,13 +26,13 @@ REQUIRED_ENV.forEach((key) => {
   }
 });
 
-// ===== INIT SERVICES =====
+// ===== INIT SERVICES (safe for serverless) =====
 connectDB();
 connectCloudinary();
 
 const app = express();
 
-// ===== CORS CONFIG (THIS FIXES YOUR ERROR) =====
+// ===== CORS CONFIG =====
 const allowedOrigins = [
   "http://localhost:5173",
   "https://sthivra.vercel.app"
@@ -41,7 +41,7 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      // allow server-to-server / postman / webhook requests
+      // Allow server-to-server, Postman, webhooks
       if (!origin) return callback(null, true);
 
       if (allowedOrigins.includes(origin)) {
@@ -56,10 +56,10 @@ app.use(
   })
 );
 
-// Explicit preflight support
+// Explicit preflight handling
 app.options("*", cors());
 
-// ===== CLERK WEBHOOK (MUST BE BEFORE JSON) =====
+// ===== CLERK WEBHOOK (RAW BODY REQUIRED) =====
 app.post(
   "/api/clerk",
   express.raw({ type: "application/json" }),
@@ -69,7 +69,7 @@ app.post(
 // ===== BODY PARSER =====
 app.use(express.json());
 
-// ===== CLERK AUTH MIDDLEWARE =====
+// ===== CLERK AUTH =====
 app.use(clerkMiddleware());
 
 // ===== ROUTES =====
@@ -102,8 +102,5 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ===== START SERVER =====
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+// ✅ IMPORTANT FOR VERCEL
+export default app;
