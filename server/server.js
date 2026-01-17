@@ -45,8 +45,9 @@ app.use(
       // Allow server-to-server, Postman, webhooks
       if (!origin) return callback(null, true);
       const allowedOrigins = [
-        "http://localhost:5173",
-        "https://sthivra.vercel.app"
+       "http://localhost:5173",
+  "https://sthivra.vercel.app",
+  "https://sthivra-frontend.vercel.app"
       ];
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
