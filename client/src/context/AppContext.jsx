@@ -11,99 +11,116 @@ export const AppProvider = ({ children }) => {
   const { user, isLoaded } = useUser();
   const { getToken, isSignedIn } = useAuth();
 
-  // State Management
-  const [isOwner, setIsOwner] = useState(false);
   const [showHotelReg, setShowHotelReg] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
   const [loadingUser, setLoadingUser] = useState(true);
-  const [searchedCities, setSearchedCities] = useState([]);
+  const [interceptorReady, setInterceptorReady] = useState(false);
+
+  const [hotels, setHotels] = useState([]);
   const [rooms, setRooms] = useState([]);
+  const [searchedCities, setSearchedCities] = useState([]);
   const [currency] = useState("$");
 
-  // Fetch Public Rooms (No auth required)
-  const fetchRooms = async () => {
-    try {
-      const { data } = await api.get('/api/rooms');
-      if (data.success) {
-        setRooms(data.rooms);
-      } else {
-        toast.error(data.message);
-      }
-    } catch (error) {
-      console.error("Fetch Rooms Error:", error);
-      toast.error("Failed to load rooms");
-    }
-  };
+  /* ---------- Axios Auth Interceptor ---------- */
+  useEffect(() => {
+    let authInterceptor;
 
-  // Fetch Authenticated User Data & Sync Role
+    const setupAuth = async () => {
+      if (isLoaded && isSignedIn) {
+        authInterceptor = api.interceptors.request.use(async (config) => {
+          const token = await getToken();
+          if (token) config.headers.Authorization = `Bearer ${token}`;
+          return config;
+        });
+
+        setInterceptorReady(true);
+        fetchUserData();
+      } else if (isLoaded && !isSignedIn) {
+        setInterceptorReady(true);
+        setLoadingUser(false);
+      }
+    };
+
+    setupAuth();
+
+    return () => {
+      if (authInterceptor) {
+        api.interceptors.request.eject(authInterceptor);
+      }
+    };
+  }, [isLoaded, isSignedIn]);
+
+  /* ---------- Fetch Logged-in User ---------- */
   const fetchUserData = async () => {
     try {
-      setLoadingUser(true);
-      const token = await getToken();
-      
-      if (!token) {
-        setLoadingUser(false);
-        return;
-      }
-
-      // Update the api instance with the latest token
-      api.defaults.headers.common.Authorization = `Bearer ${token}`;
-
       const { data } = await api.get("/api/user");
-
       if (data?.success) {
-  // Set isOwner to true if the role is either hotelOwner OR hotelier
-  const role = data.user.role;
-  setIsOwner(role === "hotelOwner" || role === "hotelier");
-}
-    } catch (error) {
-      console.error("User fetch failed:", error);
-      // If the backend returns 401/404, the user might not exist in our DB yet
-      setIsOwner(false);
+        setIsOwner(
+          data.user.role === "hotelOwner" ||
+          data.user.role === "hotelier"
+        );
+      }
+    } catch (err) {
+      console.error("User sync error");
     } finally {
       setLoadingUser(false);
     }
   };
 
-  // Initial load of public data
+  /* ---------- Fetch Hotels ---------- */
+  const fetchHotels = async () => {
+    try {
+      const { data } = await api.get("/api/hotels");
+      if (data.success) setHotels(data.hotels || []);
+    } catch {
+      setHotels([]);
+    }
+  };
+
+  /* ---------- Fetch Rooms ---------- */
+  const fetchRooms = async () => {
+    try {
+      const { data } = await api.get("/api/rooms");
+      if (data.success) setRooms(data.rooms || []);
+    } catch {
+      setRooms([]);
+    }
+  };
+
   useEffect(() => {
+    fetchHotels();
     fetchRooms();
   }, []);
-
-  // Handle Login / Logout State changes
-  useEffect(() => {
-    if (isLoaded) {
-      if (isSignedIn && user) {
-        fetchUserData();
-      } else {
-        // Reset states on logout
-        setIsOwner(false);
-        setLoadingUser(false);
-        delete api.defaults.headers.common.Authorization;
-      }
-    }
-  }, [isLoaded, isSignedIn, user]);
 
   return (
     <AppContext.Provider
       value={{
-        navigate,
         api,
-        axios: api, 
+        currency,
+        navigate,
+        user,
+
+        // Auth / Role
+        isSignedIn,
+        isLoaded,
         isOwner,
         setIsOwner,
+
+        // Hotel Registration Modal
         showHotelReg,
         setShowHotelReg,
-        loadingUser,
-        user,
-        currency,
+
+        // Data
+        hotels,
         rooms,
         setRooms,
-        fetchRooms,
-        getToken,
-        toast,
         searchedCities,
         setSearchedCities,
-        isSignedIn
+
+        // State helpers
+        loadingUser,
+        interceptorReady,
+        toast,
       }}
     >
       {children}

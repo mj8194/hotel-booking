@@ -53,12 +53,12 @@ const RoomListCard = ({ room, navigate, currency, discountPercent, couponCode })
   }
 
   return (
-    <div className="flex flex-col md:flex-row gap-10 group pb-20">
+    <div className="flex flex-col md:flex-row gap-10 group pb-20 border-b border-gray-100 last:border-none">
 
-      {/* Image */}
+      {/* Image Section */}
       <div className="w-full md:w-105 h-78 rounded-[2.5rem] overflow-hidden relative">
         <img
-          src={room.images[0]}
+          src={room.images?.[0] || assets.uploadArea}
           onClick={handleNavigate}
           className="w-full h-full object-cover cursor-pointer group-hover:scale-105 transition duration-700"
           alt={room.hotel?.name}
@@ -71,63 +71,58 @@ const RoomListCard = ({ room, navigate, currency, discountPercent, couponCode })
         )}
       </div>
 
-      {/* Content */}
+      {/* Content Section */}
       <div className="flex-1 flex flex-col">
         <h2
           onClick={handleNavigate}
           className="text-3xl font-playfair text-gray-900 hover:text-primary cursor-pointer"
         >
-          {room.hotel?.name}
+          {room.hotel?.name || "Luxury Hotel"}
         </h2>
 
-        {/* Address */}
+        {/* Address Display - FIXED */}
         <div className="flex items-center gap-2 mt-2 text-gray-500">
-          <img src={assets.location_icon} className="w-4 opacity-70" />
+          <img src={assets.locationIcon} className="w-4 opacity-70" alt="loc" />
           <p className="text-sm">
-            {room.hotel?.address}, {room.hotel?.city}
+            {room.hotel?.address}{room.hotel?.city ? `, ${room.hotel?.city}` : ""}
           </p>
         </div>
 
-        {/* Info Icons */}
+        {/* Info Icons - Fixed to use existing icons from your assets.js */}
         <div className="flex flex-wrap gap-6 mt-6 text-sm text-gray-500">
           <div className="flex items-center gap-2">
-            <img src={assets.bed_icon} className="w-4" />
+            <img src={assets.homeIcon} className="w-4" alt="bed" />
             <span>{room.roomType}</span>
           </div>
           <div className="flex items-center gap-2">
-            <img src={assets.user_icon} className="w-4" />
+            <img src={assets.guestsIcon} className="w-4" alt="user" />
             <span>Up to {room.maxGuests || 2} guests</span>
           </div>
           <div className="flex items-center gap-2">
-            <img src={assets.size_icon} className="w-4" />
-            <span>{room.size || 320} sq.ft</span>
+            <img src={assets.badgeIcon} className="w-4" alt="size" />
+            <span>Premium Stay</span>
           </div>
         </div>
 
-        {/* Amenities */}
+        {/* Amenities - FIXED Mapping */}
         <div className="flex flex-wrap gap-4 mt-6">
-          {room.facilities?.slice(0, 4).map((item, i) => (
-            <div key={i} className="flex items-center gap-2">
+          {room.amenities?.slice(0, 4).map((item, i) => (
+            <div key={i} className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg">
               <img
-                src={facilityIcons[item] || assets.check_icon}
-                className="w-4 opacity-60"
+                src={facilityIcons[item] || assets.logo} 
+                className="w-4 opacity-70"
+                alt={item}
               />
-              <span className="text-xs text-gray-400">{item}</span>
+              <span className="text-xs text-gray-500">{item}</span>
             </div>
           ))}
         </div>
 
-        {/* Cancellation */}
-        <div className="mt-5 flex items-center gap-2 text-green-700 text-sm">
-          <img src={assets.check_icon} className="w-4" />
-          Free cancellation available
-        </div>
-
-        {/* Price */}
+        {/* Pricing & CTA */}
         <div className="mt-auto pt-8 flex items-end justify-between">
           <div>
             <p className="text-[10px] uppercase tracking-widest text-gray-400 font-black mb-1">
-              {discountPercent ? 'Member Price' : 'Best Price'}
+              {discountPercent ? 'Exclusive Member Offer' : 'Starting From'}
             </p>
             <div className="flex items-center gap-3">
               <span className="text-3xl font-bold">
@@ -144,17 +139,15 @@ const RoomListCard = ({ room, navigate, currency, discountPercent, couponCode })
 
           <button
             onClick={handleNavigate}
-            className="bg-gray-900 text-white px-10 py-4 rounded-2xl text-xs font-bold tracking-widest hover:bg-black transition shadow-xl"
+            className="bg-gray-900 text-white px-10 py-4 rounded-2xl text-xs font-bold tracking-widest hover:bg-black transition shadow-xl active:scale-95"
           >
-            Reserve
+            RESERVE
           </button>
         </div>
       </div>
     </div>
   )
 }
-
-// ---------------- MAIN PAGE ----------------
 
 const AllRooms = () => {
   const [searchParams] = useSearchParams()
@@ -171,6 +164,7 @@ const AllRooms = () => {
   const priceRanges = ['0 to 500', '500 to 1000', '1000 to 2000', '2000 to 3000']
   const sortOptions = ['Price Low to High', 'Price High to Low', 'Newest First']
 
+  // Optimized Filtering logic
   const filteredRooms = useMemo(() => {
     let filtered = [...rooms]
 
@@ -197,35 +191,46 @@ const AllRooms = () => {
 
   return (
     <div className="pt-28 px-4 md:px-16 xl:px-32 bg-white min-h-screen">
-      <h1 className="text-5xl font-playfair mb-16">Our Collections</h1>
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-5xl font-playfair mb-16 text-gray-900">Our Collections</h1>
 
-      <div className="flex gap-12">
-        <aside className="hidden lg:block w-80 sticky top-28 p-8">
-          <FilterContent
-            roomTypes={roomTypes}
-            priceRanges={priceRanges}
-            sortOptions={sortOptions}
-            selectedRoomTypes={selectedRoomTypes}
-            setSelectedRoomTypes={setSelectedRoomTypes}
-            selectedPriceRanges={selectedPriceRanges}
-            setSelectedPriceRanges={setSelectedPriceRanges}
-            sortOption={sortOption}
-            setSortOption={setSortOption}
-            currency={currency}
-          />
-        </aside>
-
-        <div className="flex-1 space-y-24">
-          {filteredRooms.map(room => (
-            <RoomListCard
-              key={room._id}
-              room={room}
-              navigate={navigate}
+        <div className="flex flex-col lg:flex-row gap-12">
+          {/* Sidebar Filter */}
+          <aside className="lg:w-80 lg:sticky lg:top-28 p-8 bg-gray-50 rounded-4xl h-fit border border-gray-100">
+            <FilterContent
+              roomTypes={roomTypes}
+              priceRanges={priceRanges}
+              sortOptions={sortOptions}
+              selectedRoomTypes={selectedRoomTypes}
+              setSelectedRoomTypes={setSelectedRoomTypes}
+              selectedPriceRanges={selectedPriceRanges}
+              setSelectedPriceRanges={setSelectedPriceRanges}
+              sortOption={sortOption}
+              setSortOption={setSortOption}
               currency={currency}
-              discountPercent={discountPercent}
-              couponCode={couponCode}
             />
-          ))}
+          </aside>
+
+          {/* Rooms List */}
+          <div className="flex-1 space-y-12">
+            {filteredRooms.length > 0 ? (
+               filteredRooms.map(room => (
+                <RoomListCard
+                  key={room._id}
+                  room={room}
+                  navigate={navigate}
+                  currency={currency}
+                  discountPercent={discountPercent}
+                  couponCode={couponCode}
+                />
+              ))
+            ) : (
+              <div className="flex flex-col items-center justify-center py-40 border-2 border-dashed border-gray-100 rounded-4xl">
+                <img src={assets.searchIcon} className="w-12 opacity-20 mb-4" alt="empty" />
+                <p className="text-gray-400 font-playfair text-xl">No rooms match your filters.</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -240,7 +245,7 @@ const FilterContent = ({
 }) => (
   <div className="space-y-10">
     <div>
-      <h3 className="font-bold uppercase text-sm mb-4">Room Type</h3>
+      <h3 className="font-black uppercase text-[10px] tracking-widest text-gray-400 mb-4">Room Type</h3>
       {roomTypes.map(type => (
         <CheckBox
           key={type}
@@ -256,7 +261,7 @@ const FilterContent = ({
     </div>
 
     <div>
-      <h3 className="font-bold uppercase text-sm mb-4">Price Range</h3>
+      <h3 className="font-black uppercase text-[10px] tracking-widest text-gray-400 mb-4">Price Range</h3>
       {priceRanges.map(range => (
         <CheckBox
           key={range}
@@ -272,7 +277,7 @@ const FilterContent = ({
     </div>
 
     <div>
-      <h3 className="font-bold uppercase text-sm mb-4">Sort By</h3>
+      <h3 className="font-black uppercase text-[10px] tracking-widest text-gray-400 mb-4">Sort By</h3>
       {sortOptions.map(opt => (
         <RadioButton
           key={opt}

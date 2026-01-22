@@ -10,15 +10,13 @@ const FeatureDestination = () => {
 
   return (
     <div className='flex flex-col items-center px-6 md:px-16 lg:px-24 bg-slate-50 pt-12 pb-16'>
-      {/* Reduced top padding from pt-20 → pt-12 and bottom from pb-20 → pb-16 */}
-
       <Title 
         title='Featured Destination' 
         subTitle='Handpicked places where comfort, culture, and quiet moments come together.'
       />
 
-      <div className='flex flex-wrap items-center justify-center gap-6 mt-12'>
-        {/* Reduced margin-top from mt-20 → mt-12 */}
+      {/* Use grid for 4-column layout on large screens */}
+      <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-12'>
         {rooms.slice(0, 4).map((room, index) => (
           <HotelCard key={room._id} room={room} index={index} />
         ))}
@@ -33,7 +31,6 @@ const FeatureDestination = () => {
       >
         View All Destinations
       </button>
-      {/* Reduced margin around button: my-16 → mt-8 */}
     </div>
   );
 };

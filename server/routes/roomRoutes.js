@@ -1,25 +1,40 @@
 import express from "express";
-import upload from "../middleware/uploadMiddleware.js";
-import { protect } from "../middleware/authMiddleware.js";
 import {
   createRoom,
   getRooms,
   getOwnerRooms,
-  toggleRoomAvailability
+  toggleRoomAvailability,
+  checkAvailabilityAPI,
 } from "../controllers/roomController.js";
+import { protect } from "../middleware/authMiddleware.js";
+import upload from "../middleware/uploadMiddleware.js";
 
-const roomRouter = express.Router();
+const router = express.Router();
 
-// Route to create a room
-roomRouter.post("/", protect, upload.array("images", 4), createRoom);
+// Public
+router.get("/", getRooms);
 
-// Route to get all rooms (Public)
-roomRouter.get("/", getRooms);
+// Owner
+router.get("/owner", protect, getOwnerRooms);
 
-// Route to get rooms for a specific owner
-roomRouter.get("/owner", protect, getOwnerRooms);
+// CREATE ROOM (FIXED)
+router.post(
+  "/",
+  protect,
+  upload.array("images", 4),
+  (err, req, res, next) => {
+    if (err) {
+      return res.status(400).json({
+        success: false,
+        message: err.message,
+      });
+    }
+    next();
+  },
+  createRoom
+);
 
-// FIXED: Changed to .patch and updated path to match frontend: /api/rooms/:roomId/availability
-roomRouter.patch("/:roomId/availability", protect, toggleRoomAvailability);
+router.patch("/:roomId/toggle", protect, toggleRoomAvailability);
+router.post("/check", checkAvailabilityAPI);
 
-export default roomRouter;
+export default router;

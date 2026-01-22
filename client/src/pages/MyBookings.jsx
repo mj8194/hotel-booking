@@ -1,142 +1,162 @@
-import React, { useEffect, useState } from 'react';
-import { useAppContext } from '../context/AppContext';
-import { useAuth } from '@clerk/clerk-react';
-import { toast } from 'react-hot-toast';
+import React, { useEffect, useState } from "react";
+import { useAppContext } from "../context/AppContext";
+import { useSearchParams } from "react-router-dom";
+
+const formatDate = (date) =>
+  new Date(date).toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" });
 
 const MyBookings = () => {
-    const { api, currency, navigate } = useAppContext();
-    const { getToken } = useAuth();
-    const [bookings, setBookings] = useState([]);
-    const [loading, setLoading] = useState(true);
+  const { api, currency, isSignedIn, isLoaded, interceptorReady, toast } = useAppContext();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-    const fetchUserBookings = async () => {
-        try {
-            const token = await getToken();
-            const { data } = await api.get('/api/bookings/user-bookings', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (data.success) setBookings(data.bookings);
-        } catch (error) {
-            toast.error("Failed to load bookings");
-        } finally {
-            setLoading(false);
-        }
-    };
+  const fetchUserBookings = async () => {
+    try {
+      setLoading(true);
+      const { data } = await api.get("/api/bookings/user-bookings");
+      if (data.success) setBookings(data.bookings);
+    } catch (error) {
+      console.error("Fetch Bookings Error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const handleCancel = async (id) => {
-        if (!window.confirm("Are you sure you want to cancel this booking?")) return;
-        try {
-            const token = await getToken();
-            const { data } = await api.patch(`/api/bookings/cancel/${id}`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (data.success) {
-                toast.success("Booking successfully cancelled");
-                fetchUserBookings();
-            }
-        } catch (error) {
-            toast.error(error.response?.data?.message || "Cancellation failed");
-        }
-    };
-
-    useEffect(() => {
+  const handleCancelBooking = async (bookingId) => {
+    if (!window.confirm("Are you sure you want to cancel this reservation?")) return;
+    
+    try {
+      const { data } = await api.patch(`/api/bookings/cancel/${bookingId}`);
+      if (data.success) {
+        toast.success("Booking cancelled successfully");
         fetchUserBookings();
-    }, []);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to cancel booking");
+    }
+  };
 
-    if (loading) return (
-        <div className='flex flex-col items-center justify-center min-h-[60vh] gap-4'>
-            <div className='w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin'></div>
-            <p className='font-outfit text-gray-400 animate-pulse'>Fetching your trips...</p>
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn || !interceptorReady) return;
+
+    const success = searchParams.get("success");
+    const bookingId = searchParams.get("bookingId");
+
+    if (success === "true" && bookingId) {
+      const verifyPayment = async () => {
+        try {
+          setLoading(true);
+          const { data } = await api.post("/api/bookings/verify-payment", { bookingId });
+          if (data.success) {
+            toast.success("Payment Verified!");
+            setSearchParams({});
+          }
+        } catch (e) {
+          console.error("Verification Error:", e);
+          toast.error("Payment verification failed");
+        } finally {
+          fetchUserBookings();
+        }
+      };
+      verifyPayment();
+    } else {
+      fetchUserBookings();
+    }
+  }, [isLoaded, isSignedIn, interceptorReady, searchParams]);
+
+  if (!isLoaded || !interceptorReady || loading) return (
+    <div className="flex justify-center items-center min-h-[60vh]">
+      <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
+
+  return (
+    <div className="max-w-6xl mx-auto py-24 px-6 font-outfit">
+      <h1 className="text-4xl font-semibold mb-12 text-center text-blue-900">My Reservations</h1>
+
+      {bookings.length === 0 ? (
+        <div className="text-center py-24 bg-gray-50 rounded-3xl shadow-md">
+          <p className="text-gray-400 text-lg">No bookings found.</p>
         </div>
-    );
+      ) : (
+        <div className="grid gap-8 md:grid-cols-2">
+          {bookings.map((booking, index) => (
+            <div
+              key={booking._id}
+              className={`relative bg-white rounded-3xl shadow-md overflow-hidden transform transition-all duration-500 
+                         hover:-translate-y-1 hover:shadow-xl
+                         opacity-0 translate-y-8 animate-fadeIn`}
+              style={{ animationDelay: `${index * 100}ms`, animationFillMode: "forwards" }}
+            >
+              {booking.offerApplied && (
+                <span className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 text-xs font-bold rounded-full z-10">
+                  OFFER
+                </span>
+              )}
 
-    return (
-        <div className='max-w-6xl mx-auto py-24 px-6 md:px-10 font-outfit'>
-            <div className='mb-12'>
-                <h1 className='text-4xl font-semibold text-blue-950 mb-2'>My Reservations</h1>
-                <p className='text-gray-500'>Manage your upcoming stays and experiences.</p>
+              <img
+                src={booking.room?.images?.[0] || "https://via.placeholder.com/400x300"}
+                className="w-full h-56 object-cover"
+                alt="room"
+              />
+              <div className="p-6 flex flex-col justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-bold text-blue-950">{booking.hotel?.name}</h2>
+                  <p className="text-gray-600 text-lg">{booking.room?.roomType}</p>
+                  <div className="mt-2 flex gap-4 text-sm text-gray-500">
+                    <p><span className="font-medium">In:</span> {formatDate(booking.checkInDate)}</p>
+                    <p><span className="font-medium">Out:</span> {formatDate(booking.checkOutDate)}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between mt-4">
+                  <p className="font-bold text-blue-600 text-xl">{currency}{booking.totalPrice}</p>
+                  <div className="flex items-center gap-2">
+                    {/* Pay Now Button */}
+                    {booking.paymentStatus === "Unpaid" && booking.status !== "Cancelled" && (
+                      <button
+                        onClick={() => {
+                          api.post("/api/bookings/stripe-payment", { bookingId: booking._id })
+                             .then(res => window.location.href = res.data.url)
+                             .catch(() => toast.error("Could not initiate payment"));
+                        }}
+                        className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Pay Now
+                      </button>
+                    )}
+
+                    {/* Cancel Button */}
+                    {booking.status !== "Cancelled" && (
+                       <button
+                       onClick={() => handleCancelBooking(booking._id)}
+                       className="px-4 py-2 bg-red-50 text-red-600 text-sm border border-red-100 rounded-lg hover:bg-red-600 hover:text-white transition-all"
+                     >
+                       Cancel
+                     </button>
+                    )}
+
+                    {/* Status Badge */}
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        booking.status === 'Cancelled'
+                          ? 'bg-red-100 text-red-700'
+                          : booking.paymentStatus === 'Paid'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-yellow-100 text-yellow-700'
+                      }`}
+                    >
+{booking.paymentStatus === 'Refunded' ? 'Refunded' : (booking.status === 'Cancelled' ? 'Cancelled' : booking.paymentStatus)}                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
-
-            {bookings.length === 0 ? (
-                <div className='text-center py-20 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200'>
-                    <p className='text-gray-400 text-lg'>No trips found.</p>
-                    <button onClick={() => navigate('/')} className='mt-4 text-primary font-medium hover:underline'>Find a hotel →</button>
-                </div>
-            ) : (
-                <div className='grid gap-8'>
-                    {bookings.map((booking) => (
-                        <div key={booking._id} className='group bg-white border border-gray-100 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 flex flex-col lg:flex-row'>
-                            
-                            <div className='relative w-full lg:w-72 h-48 lg:h-auto overflow-hidden'>
-                                <img src={booking.room?.images[0]} className='w-full h-full object-cover group-hover:scale-110 transition-transform duration-700' alt="Hotel" />
-                                <div className='absolute top-4 left-4'>
-                                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase shadow-lg ${booking.status === 'Cancelled' ? 'bg-red-500 text-white' : 'bg-white text-blue-950'}`}>
-                                        {booking.status}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div className='flex-1 p-8 flex flex-col justify-between'>
-                                <div>
-                                    <div className='flex justify-between items-start mb-2'>
-                                        <h2 className='text-2xl font-bold text-blue-950'>{booking.hotel?.name}</h2>
-                                        <div className='text-right'>
-                                            <p className='text-xs text-gray-400 uppercase tracking-tighter'>Total Price</p>
-                                            <p className='text-2xl font-black text-primary'>{currency}{booking.totalPrice}</p>
-                                            
-                                            {/* ONLY SHOW IF OFFER WAS APPLIED IN DB */}
-                                            {booking.offerApplied && (
-                                                <p className='text-[10px] text-green-600 font-bold mt-1 uppercase tracking-widest'>
-                                                    ✨ Offer Applied
-                                                </p>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <p className='text-gray-500 flex items-center gap-1 mb-6'>
-                                        <span className='w-2 h-2 rounded-full bg-primary/40'></span>
-                                        {booking.room?.roomType}
-                                    </p>
-
-                                    <div className='grid grid-cols-2 gap-4 py-4 border-y border-gray-50'>
-                                        <div>
-                                            <p className='text-[10px] text-gray-400 uppercase font-bold tracking-widest'>Check-In</p>
-                                            <p className='font-medium text-gray-700'>{new Date(booking.checkInDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-                                        </div>
-                                        <div>
-                                            <p className='text-[10px] text-gray-400 uppercase font-bold tracking-widest'>Check-Out</p>
-                                            <p className='font-medium text-gray-700'>{new Date(booking.checkOutDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className='mt-8 flex flex-wrap items-center justify-between gap-4'>
-                                    <div className='flex items-center gap-2'>
-                                        <div className={`w-3 h-3 rounded-full ${booking.paymentStatus === 'Paid' ? 'bg-green-500' : 'bg-amber-400 animate-pulse'}`}></div>
-                                        <p className='text-sm font-medium text-gray-600'>Payment: {booking.paymentStatus}</p>
-                                    </div>
-
-                                    <div className='flex gap-3'>
-                                        {booking.status !== 'Cancelled' && (
-                                            <>
-                                                <button onClick={() => handleCancel(booking._id)} className='px-6 py-2.5 rounded-xl border border-gray-200 text-gray-400 text-sm font-medium hover:bg-red-50 hover:text-red-500 hover:border-red-100 transition-all'>
-                                                    Cancel Trip
-                                                </button>
-                                                {booking.paymentStatus !== 'Paid' && (
-                                                    <button onClick={() => navigate(`/payment/${booking._id}`)} className='px-8 py-2.5 rounded-xl bg-primary text-white text-sm font-bold shadow-lg shadow-primary/20 hover:bg-blue-700 hover:shadow-primary/40 transition-all'>
-                                                        Pay Now
-                                                    </button>
-                                                )}
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
+          ))}
         </div>
-    );
+      )}
+    </div>
+  );
 };
 
 export default MyBookings;

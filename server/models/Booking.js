@@ -8,24 +8,20 @@ const bookingSchema = new mongoose.Schema({
     checkOutDate: { type: Date, required: true },
     guests: { type: Number, required: true, default: 1 },
     totalPrice: { type: Number, required: true },
-    // --- NEW FIELDS ---
     offerApplied: { type: Boolean, default: false },
-    appliedDiscount: { type: Number, default: 0 }, 
-    // ------------------
-    status: { 
-        type: String, 
-        enum: ['Pending', 'Confirmed', 'Cancelled', 'Completed'], 
-        default: 'Confirmed' 
-    },
+    appliedDiscount: { type: Number, default: 0 },
+    status: { type: String, enum: ['Confirmed', 'Cancelled'], default: 'Confirmed' },
     paymentStatus: { 
         type: String, 
-        enum: ['Unpaid', 'Paid', 'Refunded'], 
+        enum: ["Unpaid", "Paid", "Refund Initiated", "Refunded"], 
         default: 'Unpaid' 
     },
+    // Track Stripe Payment Intent for automated refunds
+    stripePaymentIntentId: { type: String },
     bookingReference: { 
         type: String, 
-        unique: true,
-        default: () => `BK-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+        unique: true, 
+        default: () => `BK-${Math.random().toString(36).substr(2, 9).toUpperCase()}` 
     }
 }, { timestamps: true });
 
