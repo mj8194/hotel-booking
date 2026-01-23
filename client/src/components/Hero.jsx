@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { assets, cities } from '../assets/assets'
 import { useAppContext } from '../context/AppContext'
+import heroImage from '../assets/heroImage.jpg'
 
 const Hero = () => {
     const { navigate, getToken, axios, setSearchedCities } = useAppContext()
@@ -41,7 +42,12 @@ const Hero = () => {
     }
 
     return (
-        <div className='flex flex-col items-start justify-center px-6 md:px-16 lg:px-24 xl:px-32 text-white bg-[url("/src/assets/heroImage.jpg")] bg-no-repeat bg-cover h-screen relative'>
+        <div 
+            className='flex flex-col items-start justify-center px-6 md:px-16 lg:px-24 xl:px-32 text-white bg-no-repeat bg-cover h-screen relative'
+            style={{
+                backgroundImage: `url(${heroImage})`,
+            }}
+        >
             
             {/* Overlay for better text readability */}
             <div className='absolute inset-0 bg-black/20 -z-10'></div>
