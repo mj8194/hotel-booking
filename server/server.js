@@ -22,25 +22,10 @@ connectCloudinary();
 
 // ---------------------- CORS ----------------------
 app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or Postman)
-    // and requests from the frontend URLs
-    const allowedOrigins = [
-      "http://localhost:5173",
-      "https://sthivra.vercel.app",
-      process.env.FRONTEND_URL
-    ];
-    
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(null, true); // Allow all for now to debug
-    }
-  },
-  credentials: true,
+  origin: "*", // Allow all origins for now
+  credentials: false,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
-  optionsSuccessStatus: 200,
 }));
 
 // ---------------------- Webhooks ----------------------
