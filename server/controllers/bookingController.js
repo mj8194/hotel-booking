@@ -194,25 +194,35 @@ export const verifyManualPayment = async (req, res) => {
 
 // Stripe webhook for automatic payment verification
 export const stripeWebhook = async (req, res) => {
-    const sig = req.headers["stripe-signature"];
-    let event;
+  const sig = req.headers["stripe-signature"];
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+  } catch (err) {
+    console.error("Webhook signature verification failed:", err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object;
+    const bookingId = session.metadata.bookingId;
+
     try {
-        event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+      const booking = await Booking.findById(bookingId).populate("user room hotel");
+      if (!booking) return res.status(404).send("Booking not found");
+
+      if (booking.paymentStatus !== "Paid") {
+        booking.paymentStatus = "Paid";
+        booking.stripePaymentIntentId = session.payment_intent;
+        await booking.save();
+        await sendBookingConfirmationEmail(booking.user, booking);
+      }
     } catch (err) {
-        return res.status(400).send(`Webhook Error: ${err.message}`);
+      console.error("Stripe webhook processing error:", err.message);
+      return res.status(500).send("Internal Server Error");
     }
+  }
 
-    if (event.type === "checkout.session.completed") {
-        const session = event.data.object;
-        const bookingId = session.metadata.bookingId;
-        const booking = await Booking.findById(bookingId).populate("user room hotel");
-
-        if (booking && booking.paymentStatus !== "Paid") {
-            booking.paymentStatus = "Paid";
-            booking.stripePaymentIntentId = session.payment_intent;
-            await booking.save();
-            await sendBookingConfirmationEmail(booking.user, booking);
-        }
-    }
-    res.json({ received: true });
+  res.json({ received: true });
 };
