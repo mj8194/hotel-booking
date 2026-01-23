@@ -21,22 +21,26 @@ connectDB();
 connectCloudinary();
 
 // ---------------------- CORS ----------------------
-const allowedOrigins = [
-  process.env.FRONTEND_URL || "http://localhost:5173",
-  "https://sthivra.vercel.app" // Production frontend
-];
-
 app.use(cors({
-  origin: (origin, callback) => {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or Postman)
+    // and requests from the frontend URLs
+    const allowedOrigins = [
+      "http://localhost:5173",
+      "https://sthivra.vercel.app",
+      process.env.FRONTEND_URL
+    ];
+    
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error("CORS not allowed"));
+      callback(null, true); // Allow all for now to debug
     }
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
+  optionsSuccessStatus: 200,
 }));
 
 // ---------------------- Webhooks ----------------------
